@@ -1,0 +1,21 @@
+services:
+  ollama:
+    image: queeryme/qwen3.5-intellij:latest
+    build: .
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  ollama:
+    name: ollama
