@@ -69,10 +69,15 @@ COMMIT_RULES = """Format the commit message as a GitHub-style git commit message
 - Line 1: a summary in the imperative mood (e.g. "Add", "Fix", "Update"), at most 72 characters, capitalized, no trailing period.
 - Line 2: blank.
 - Then an optional body wrapped at 72 characters: short "- " bullet points explaining what changed and why.
-Output ONLY the commit message: no code fences, no quotes, no preamble, no explanations."""
+Output ONLY the commit message: no code fences, no quotes, no preamble, no explanations,
+no separator lines (such as "---" or "===") and no Markdown headings."""
+
+RULE_RE = re.compile(r"^\s*([-=_*~])(\s*\1){2,}\s*$")
 
 SUBJECT_MAX = 72
 BODY_MAX = 72
+COMMIT_MAX_TOKENS = 256
+COMMIT_REPEAT_PENALTY = 1.1
 
 
 def _texts(body):
@@ -116,7 +121,7 @@ def format_commit(text):
         subject = cut[:SUBJECT_MAX].rstrip(" ,;:-")
     if subject and subject[0].islower() and ":" not in subject.split(" ")[0]:
         subject = subject[0].upper() + subject[1:]
-    body = lines[1:]
+    body = [l for l in lines[1:] if not RULE_RE.match(l)]
     while body and not body[0].strip():
         body.pop(0)
     while body and not body[-1].strip():
@@ -134,7 +139,8 @@ def is_valid_commit(msg):
         return False
     if len(lines) > 1 and (lines[1] != "" or len(lines) < 3):
         return False
-    return all(len(l) <= BODY_MAX for l in lines[2:]) and "```" not in msg
+    return (all(len(l) <= BODY_MAX and not RULE_RE.match(l) for l in lines[2:])
+            and "```" not in msg)
 
 
 def request(flow: http.HTTPFlow):
@@ -150,6 +156,13 @@ def request(flow: http.HTTPFlow):
         body.setdefault("think", False)
     if COMMIT_RE.search(_texts(body)):
         flow.metadata["commit"] = True
+        if path.startswith(("/api/chat", "/api/generate")):
+            opts = body.setdefault("options", {})
+            opts.setdefault("num_predict", COMMIT_MAX_TOKENS)
+            opts.setdefault("repeat_penalty", COMMIT_REPEAT_PENALTY)
+        else:
+            body.setdefault("max_tokens", COMMIT_MAX_TOKENS)
+            body.setdefault("frequency_penalty", 0.3)
         if isinstance(body.get("messages"), list):
             body["messages"].append({"role": "system", "content": COMMIT_RULES})
         elif isinstance(body.get("prompt"), str):
