@@ -8,8 +8,8 @@ ENV OLLAMA_HOST=0.0.0.0:11434 \
     MODEL=frob/qwen3.5-instruct:9b \
     WARMUP=true
 
-COPY entrypoint.sh /opt/qwen-intellij/entrypoint.sh
-RUN sed -i 's/\r$//' /opt/qwen-intellij/entrypoint.sh && chmod +x /opt/qwen-intellij/entrypoint.sh
+COPY entrypoint.sh Modelfile /opt/qwen-intellij/
+RUN sed -i 's/\r$//' /opt/qwen-intellij/entrypoint.sh /opt/qwen-intellij/Modelfile && chmod +x /opt/qwen-intellij/entrypoint.sh
 
 VOLUME /root/.ollama
 EXPOSE 11434

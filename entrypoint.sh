@@ -3,6 +3,8 @@ set -eu
 
 MODEL="${MODEL:-frob/qwen3.5-instruct:9b}"
 WARMUP="${WARMUP:-true}"
+CUSTOM_MODEL="${CUSTOM_MODEL:-qwen3.5-intellij:9b}"
+MODELFILE="${MODELFILE:-/opt/qwen-intellij/Modelfile}"
 
 log() { echo "[entrypoint] $*"; }
 
@@ -18,9 +20,12 @@ if ! ollama show "$MODEL" >/dev/null 2>&1; then
   ollama pull "$MODEL"
 fi
 
+log "creating $CUSTOM_MODEL from $MODELFILE"
+ollama create "$CUSTOM_MODEL" -f "$MODELFILE"
+
 if [ "$WARMUP" = "true" ]; then
-  log "warming up $MODEL"
-  ollama run "$MODEL" "hi" >/dev/null
+  log "warming up $CUSTOM_MODEL"
+  ollama run "$CUSTOM_MODEL" "hi" >/dev/null
   log "warm-up done, model is loaded"
 fi
 

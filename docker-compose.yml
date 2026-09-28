@@ -5,7 +5,11 @@ services:
     container_name: ollama
     restart: unless-stopped
     ports:
-      - "11434:11434"
+      # raw Ollama (unfiltered); IntelliJ uses the filter on 11434
+      - "11436:11434"
+    environment:
+      # 1 = debug logs (request timing, load times); 2 = trace (also logs rendered prompts)
+      OLLAMA_DEBUG: "${OLLAMA_DEBUG:-1}"
     volumes:
       - ollama:/root/.ollama
     deploy:
@@ -15,6 +19,39 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+
+  # Filter proxy: strips <think>...</think> from responses and sends think=false.
+  ollama-filter:
+    image: mitmproxy/mitmproxy:latest
+    container_name: ollama-filter
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    ports:
+      - "11434:8080"
+    volumes:
+      - ./strip_think.py:/addons/strip_think.py:ro
+    command: >
+      mitmdump --mode reverse:http://ollama:11434
+      --set keep_host_header=true -q
+      -s /addons/strip_think.py
+
+  # Debug proxy: shows every request/response between IntelliJ and Ollama.
+  # Start with: docker compose --profile debug up -d
+  # Point IntelliJ to http://localhost:11435, inspect traffic at http://localhost:8081
+  ollama-debug-proxy:
+    image: mitmproxy/mitmproxy:latest
+    container_name: ollama-debug-proxy
+    profiles: ["debug"]
+    depends_on:
+      - ollama
+    ports:
+      - "11435:8080"
+      - "8081:8081"
+    command: >
+      mitmweb --mode reverse:http://ollama-filter:8080
+      --web-host 0.0.0.0 --set keep_host_header=true
+      --set web_password=debug
 
 volumes:
   ollama:

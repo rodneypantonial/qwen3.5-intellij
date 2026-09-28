@@ -1,0 +1,6 @@
+FROM frob/qwen3.5-instruct:9b
+
+# Use Ollama's built-in Qwen 3.5 prompt renderer instead of the GGUF Jinja template,
+# which rejects system messages that are not first (IntelliJ AI Assistant sends them mid-conversation).
+RENDERER qwen3.5
+PARSER qwen3.5
