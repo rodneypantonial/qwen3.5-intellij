@@ -1,4 +1,4 @@
-FROM ollama/ollama:0.34.4
+FROM ollama/ollama:0.40.5
 
 ENV OLLAMA_HOST=0.0.0.0:11434 \
     OLLAMA_CONTEXT_LENGTH=8192 \
